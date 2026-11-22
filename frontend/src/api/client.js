@@ -1,44 +1,74 @@
-const API_BASE = "http://localhost:8080/api";
+// In dev, Vite proxies /api to the Spring backend. Set VITE_API_URL to point elsewhere.
+const API_BASE = import.meta.env.VITE_API_URL ?? "/api";
 
-function getToken() {
-  return localStorage.getItem("token");
+let unauthorizedHandler = null;
+
+/** Called whenever an authenticated request comes back 401 (expired or invalid session). */
+export function onUnauthorized(handler) {
+  unauthorizedHandler = handler;
+}
+
+export class ApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.status = status;
+  }
 }
 
 async function request(path, { method = "GET", body, auth = true } = {}) {
-  const headers = { "Content-Type": "application/json" };
+  const headers = {};
+  if (body !== undefined) headers["Content-Type"] = "application/json";
   if (auth) {
-    const token = getToken();
-    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const token = localStorage.getItem("token");
+    if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new ApiError("Can't reach the server. Check that the backend is running.", 0);
+  }
 
   if (!res.ok) {
-    const errText = await res.text().catch(() => "Request failed");
-    throw new Error(errText || `Request failed (${res.status})`);
+    if (res.status === 401 && auth && unauthorizedHandler) unauthorizedHandler();
+    throw new ApiError(await errorMessage(res), res.status);
   }
 
-  const contentType = res.headers.get("content-type");
-  if (contentType && contentType.includes("application/json")) {
-    return res.json();
+  if (res.status === 204) return null;
+  const contentType = res.headers.get("content-type") ?? "";
+  return contentType.includes("application/json") ? res.json() : null;
+}
+
+async function errorMessage(res) {
+  try {
+    const data = await res.json();
+    if (data?.error) return data.error;
+  } catch {
+    // not JSON; fall through
   }
-  return null;
+  return `Request failed (${res.status})`;
 }
 
 export const api = {
   register: (data) => request("/auth/register", { method: "POST", body: data, auth: false }),
   login: (data) => request("/auth/login", { method: "POST", body: data, auth: false }),
 
-  createGroup: (data) => request("/groups", { method: "POST", body: data }),
   getMyGroups: () => request("/groups"),
+  createGroup: (data) => request("/groups", { method: "POST", body: data }),
   getGroup: (id) => request(`/groups/${id}`),
+  addMember: (id, username) => request(`/groups/${id}/members`, { method: "POST", body: { username } }),
 
-  addExpense: (groupId, data) => request(`/groups/${groupId}/expenses`, { method: "POST", body: data }),
   getExpenses: (groupId) => request(`/groups/${groupId}/expenses`),
+  addExpense: (groupId, data) => request(`/groups/${groupId}/expenses`, { method: "POST", body: data }),
+  deleteExpense: (groupId, expenseId) =>
+    request(`/groups/${groupId}/expenses/${expenseId}`, { method: "DELETE" }),
+  recordPayment: (groupId, data) => request(`/groups/${groupId}/payments`, { method: "POST", body: data }),
 
+  getBalances: (groupId) => request(`/groups/${groupId}/balances`),
   getSettlement: (groupId) => request(`/groups/${groupId}/settlement`),
 };
