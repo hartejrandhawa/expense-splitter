@@ -1,22 +1,136 @@
+/* ---------- Design tokens ---------- */
 :root {
-  --bg: #f7f8fa;
-  --surface: #ffffff;
-  --border: #e2e5ea;
-  --text: #1c1f26;
-  --text-muted: #6b7280;
-  --accent: #0f766e;
-  --accent-dark: #0b5a54;
-  --danger: #b91c1c;
-  --sans: -apple-system, "Inter", "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
 
-  color: var(--text);
-  background: var(--bg);
-  font-family: var(--sans);
-  -webkit-font-smoothing: antialiased;
+  --bg: #eef1f5;            /* pale steel paper */
+  --surface: #ffffff;
+  --surface-2: #f6f8fb;
+  --border: #d9dfe7;
+  --border-strong: #c2cad6;
+  --ink: #18212f;           /* navy ink */
+  --muted: #5b6676;
+  --accent: #2f3b95;        /* fountain-pen indigo: actions */
+  --accent-hover: #232d7a;
+  --accent-soft: #e5e8f7;
+  --on-accent: #ffffff;
+  --positive: #0b7a52;      /* owed to you */
+  --positive-bar: #12a06c;
+  --positive-soft: #dcf1e7;
+  --negative: #b42850;      /* you owe */
+  --negative-bar: #d6436d;
+  --negative-soft: #f8e1e8;
+  --backdrop: rgb(15 20 28 / 0.45);
+  --focus: #4c5bdb;
+
+  --avatar-l-bg: 87%;
+  --avatar-l-fg: 28%;
+  --avatar-s: 55%;
+
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --sans: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --r-sm: 8px;
+  --r-md: 11px;
+  --r-lg: 18px;
 }
 
-* { box-sizing: border-box; }
-body { margin: 0; }
-button { font-family: inherit; cursor: pointer; }
-input { font-family: inherit; }
-a { color: var(--accent); text-decoration: none; }
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --bg: #0f141c;
+    --surface: #161c26;
+    --surface-2: #1c2330;
+    --border: #283140;
+    --border-strong: #3a4556;
+    --ink: #e6ebf2;
+    --muted: #96a2b4;
+    --accent: #a6b0ff;
+    --accent-hover: #c0c7ff;
+    --accent-soft: #232a4c;
+    --on-accent: #10152b;
+    --positive: #4fd39a;
+    --positive-bar: #36b981;
+    --positive-soft: #143226;
+    --negative: #ff7fa1;
+    --negative-bar: #e0577d;
+    --negative-soft: #3b1c28;
+    --backdrop: rgb(0 0 0 / 0.6);
+    --focus: #a6b0ff;
+
+    --avatar-l-bg: 28%;
+    --avatar-l-fg: 84%;
+    --avatar-s: 35%;
+  }
+}
+
+/* ---------- Base ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--display);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,95 +1,126 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { api } from "../api/client";
-import { useAuth } from "../context/AuthContext";
+import AppShell from "../components/AppShell";
+import { AvatarStack } from "../components/Avatar";
+import Icon from "../components/Icon";
+import { memberBalanceText } from "../lib/balance";
+import { balanceSign, formatMoney } from "../lib/money";
+import NewGroupModal from "./NewGroupModal";
+
+function Overview({ groups }) {
+  const owed = groups.filter((g) => balanceSign(g.yourBalance) > 0).reduce((t, g) => t + g.yourBalance, 0);
+  const owe = groups.filter((g) => balanceSign(g.yourBalance) < 0).reduce((t, g) => t - g.yourBalance, 0);
+
+  if (!owed && !owe) {
+    return <p className="headline">You're all settled up everywhere.</p>;
+  }
+  return (
+    <p className="headline">
+      {owed > 0 && (
+        <span className="headline-line">
+          You're owed <span className="tone-positive">{formatMoney(owed)}</span>
+        </span>
+      )}
+      {owe > 0 && (
+        <span className="headline-line">
+          {owed > 0 ? "and you owe " : "You owe "}
+          <span className="tone-negative">{formatMoney(owe)}</span>
+        </span>
+      )}
+    </p>
+  );
+}
+
+function GroupRow({ group }) {
+  const balance = memberBalanceText(group.yourBalance);
+  const sign = balanceSign(group.yourBalance);
+  return (
+    <li>
+      <Link to={`/groups/${group.id}`} className="group-row">
+        <span className="group-row-main">
+          <span className="group-row-name">{group.name}</span>
+          <span className="group-row-meta">
+            <AvatarStack names={group.members} />
+            <span>
+              {group.members.length} {group.members.length === 1 ? "person" : "people"}
+            </span>
+            <span className="tnum">{formatMoney(group.totalSpent)} spent</span>
+          </span>
+        </span>
+        <span className={`group-row-balance tone-${balance.tone}`}>
+          <span className="group-row-balance-label">
+            {sign > 0 ? "you get back" : sign < 0 ? "you owe" : "settled up"}
+          </span>
+          {sign !== 0 && <span className="tnum group-row-amount">{formatMoney(group.yourBalance)}</span>}
+        </span>
+      </Link>
+    </li>
+  );
+}
 
 export default function Groups() {
-  const [groups, setGroups] = useState([]);
-  const [name, setName] = useState("");
-  const [memberUsernames, setMemberUsernames] = useState("");
+  const [groups, setGroups] = useState(null);
   const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const { username, logout } = useAuth();
-  const navigate = useNavigate();
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    loadGroups();
+    let cancelled = false;
+    api
+      .getMyGroups()
+      .then((data) => !cancelled && setGroups(data))
+      .catch((err) => !cancelled && setError(err.message));
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  async function loadGroups() {
-    try {
-      const data = await api.getMyGroups();
-      setGroups(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleCreate(e) {
-    e.preventDefault();
-    setError(null);
-    try {
-      const members = memberUsernames
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      await api.createGroup({ name, memberUsernames: members });
-      setName("");
-      setMemberUsernames("");
-      loadGroups();
-    } catch (err) {
-      setError(err.message);
-    }
-  }
-
-  function handleLogout() {
-    logout();
-    navigate("/login");
-  }
-
   return (
-    <div className="page">
-      <header className="page-header">
-        <h1>Your groups</h1>
+    <AppShell>
+      <div className="page-head">
         <div>
-          <span className="username-tag">{username}</span>
-          <button className="link-btn" onClick={handleLogout}>Log out</button>
+          <h1 className="page-title">Your groups</h1>
+          {groups?.length > 0 && <Overview groups={groups} />}
         </div>
-      </header>
+        <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
+          <Icon name="plus" /> New group
+        </button>
+      </div>
 
-      <form className="card create-group-form" onSubmit={handleCreate}>
-        <h2>New group</h2>
-        <input
-          placeholder="Group name (e.g. Cabin Trip)"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-        <input
-          placeholder="Other usernames, comma-separated (optional)"
-          value={memberUsernames}
-          onChange={(e) => setMemberUsernames(e.target.value)}
-        />
-        {error && <p className="error-text">{error}</p>}
-        <button type="submit">Create group</button>
-      </form>
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
 
-      {loading ? (
-        <p>Loading...</p>
-      ) : groups.length === 0 ? (
-        <p className="empty-state">No groups yet — create one above.</p>
-      ) : (
-        <div className="group-list">
-          {groups.map((g) => (
-            <Link key={g.id} to={`/groups/${g.id}`} className="group-card">
-              <h3>{g.name}</h3>
-              <p>{g.members.length} member{g.members.length !== 1 ? "s" : ""}</p>
-            </Link>
+      {!groups && !error && (
+        <ul className="group-list" aria-busy="true" aria-label="Loading groups">
+          {[0, 1, 2].map((i) => (
+            <li key={i} className="skeleton skeleton-row" />
           ))}
+        </ul>
+      )}
+
+      {groups?.length === 0 && (
+        <div className="empty">
+          <Icon name="receipt" size={28} />
+          <h2>Start your first group</h2>
+          <p>Make one for a trip, a flat or a regular dinner, then add the people you split costs with.</p>
+          <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
+            <Icon name="plus" /> New group
+          </button>
         </div>
       )}
-    </div>
+
+      {groups?.length > 0 && (
+        <ul className="group-list">
+          {groups.map((g) => (
+            <GroupRow key={g.id} group={g} />
+          ))}
+        </ul>
+      )}
+
+      <NewGroupModal open={creating} onClose={() => setCreating(false)} />
+    </AppShell>
   );
 }

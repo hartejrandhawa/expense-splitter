@@ -38,6 +38,14 @@ public class Expense {
     @Column(nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
+    /**
+     * A repayment from one member to another. Stored as an expense paid by the
+     * sender with a single split owed by the receiver, so balance math needs no
+     * special case; the flag only changes how it's displayed and totalled.
+     */
+    @Column(name = "is_payment", nullable = false, columnDefinition = "boolean default false")
+    private boolean payment = false;
+
     @OneToMany(mappedBy = "expense", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ExpenseSplit> splits = new ArrayList<>();
 

@@ -1,29 +1,28 @@
-import { createContext, useContext, useState } from "react";
-
-const AuthContext = createContext(null);
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { onUnauthorized } from "../api/client";
+import { AuthContext } from "./auth-context";
 
 export function AuthProvider({ children }) {
-  const [username, setUsername] = useState(localStorage.getItem("username"));
+  const [username, setUsername] = useState(() => localStorage.getItem("username"));
 
-  function login(token, username) {
+  const login = useCallback((token, name) => {
     localStorage.setItem("token", token);
-    localStorage.setItem("username", username);
-    setUsername(username);
-  }
+    localStorage.setItem("username", name);
+    setUsername(name);
+  }, []);
 
-  function logout() {
+  const logout = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("username");
     setUsername(null);
-  }
+  }, []);
 
-  return (
-    <AuthContext.Provider value={{ username, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
+  // An expired token anywhere in the app drops the user back to the login screen.
+  useEffect(() => {
+    onUnauthorized(logout);
+    return () => onUnauthorized(null);
+  }, [logout]);
 
-export function useAuth() {
-  return useContext(AuthContext);
+  const value = useMemo(() => ({ username, login, logout }), [username, login, logout]);
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
