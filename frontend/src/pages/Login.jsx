@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../context/auth-context";
+import AuthLayout from "../components/AuthLayout";
+import PasswordField from "../components/PasswordField";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -16,41 +18,49 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      const res = await api.login({ username, password });
+      const res = await api.login({ username: username.trim(), password });
       login(res.token, res.username);
       navigate("/groups");
     } catch (err) {
       setError(err.message);
-    } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="auth-page">
-      <form className="auth-card" onSubmit={handleSubmit}>
-        <h1>Log in</h1>
-        <input
-          placeholder="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
+    <AuthLayout title="Log in" subtitle="Pick up where your groups left off.">
+      <form className="form" onSubmit={handleSubmit}>
+        <div className="field">
+          <label htmlFor="username">Username</label>
+          <input
+            id="username"
+            autoComplete="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoFocus
+            required
+          />
+        </div>
+        <PasswordField
+          id="password"
+          label="Password"
+          autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
         />
-        {error && <p className="error-text">{error}</p>}
-        <button type="submit" disabled={loading}>
-          {loading ? "Logging in..." : "Log in"}
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
+        <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
+          {loading ? "Logging in…" : "Log in"}
         </button>
-        <p className="auth-switch">
-          No account? <Link to="/register">Register</Link>
-        </p>
       </form>
-    </div>
+      <p className="auth-switch">
+        New here? <Link to="/register">Create an account</Link>
+      </p>
+    </AuthLayout>
   );
 }
